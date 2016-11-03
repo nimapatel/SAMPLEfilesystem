@@ -1,0 +1,21 @@
+package filesystem.core;
+
+/*
+  For now I am using this class for setting file attributes. later I will
+  use this to store all the filesystem information in storage device.
+*/
+public class BitSet
+{
+  private byte b; //use single byte now. later it can be an array of byte
+  public BitSet()
+  {
+  }
+  /*
+   * Set a specified bit to 1 (true).
+   */
+  public void setBit( int whichBit )
+  {
+    b |= (byte)( 1 << ( whichBit%8 ) ) ;
+  }
+
+}

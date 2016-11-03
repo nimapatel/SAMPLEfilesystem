@@ -1,0 +1,45 @@
+package filesystem.util;
+
+import java.io.*;
+import java.awt.datatransfer.*;
+import java.awt.Toolkit;
+import java.util.*;
+
+public class ClipBoard
+{
+  public ClipBoard()
+  {
+  }
+
+  public static String getClipboard()
+  {
+    Transferable t = Toolkit.getDefaultToolkit().getSystemClipboard().
+                     getContents(null);
+
+    try
+    {
+      if(t != null && t.isDataFlavorSupported(DataFlavor.stringFlavor))
+      {
+        String text = (String) t.getTransferData(DataFlavor.stringFlavor);
+        return text;
+      }
+      if(t != null && t.isDataFlavorSupported(DataFlavor.javaFileListFlavor))
+      {
+        List files = (List) t.getTransferData(DataFlavor.javaFileListFlavor);
+        for(int i = 0; i < files.size(); i++)
+        {
+          System.out.println(files.get(i));
+        }
+      }
+
+    }
+    catch(UnsupportedFlavorException e)
+    {
+    }
+    catch(IOException e)
+    {
+    }
+    return null;
+  }
+
+}

@@ -1,0 +1,13 @@
+package filesystem.util;
+
+import java.awt.datatransfer.*;
+import java.awt.Toolkit;
+import java.util.*;
+
+public class ClipBoard
+{
+  public ClipBoard()
+  {
+  }
+
+}

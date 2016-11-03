@@ -1,0 +1,7 @@
+package filesystem.gui;
+
+public abstract class Kernel
+{
+  public static short ROOT = 1;
+  public static short DIRECTORY = 1;
+}

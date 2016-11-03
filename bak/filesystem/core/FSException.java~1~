@@ -1,0 +1,12 @@
+package filesystem.core;
+
+public class FSException extends Exception
+{
+  public FSException(){}
+
+  public FSException(String msg)
+  {
+    super(msg);
+  }
+
+}

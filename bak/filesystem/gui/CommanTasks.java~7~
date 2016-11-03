@@ -1,0 +1,32 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class CommanTasks extends JPanel
+{
+  private JPanel taskPanel = new JPanel();
+  private JPanel graphPanel = new JPanel();
+  public CommanTasks()
+  {
+    try
+    {
+      jbInit();
+    }
+    catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
+  private void jbInit() throws Exception
+  {
+    this.setLayout(null);
+    this.setSize(193,515);
+    taskPanel.setBorder(BorderFactory.createLineBorder(Color.black));
+    taskPanel.setBounds(new Rectangle(0, 0, 192, 262));
+    graphPanel.setBounds(new Rectangle(0, 265, 193, 249));
+    this.add(graphPanel, null);
+    this.add(taskPanel, null);
+  }
+
+}

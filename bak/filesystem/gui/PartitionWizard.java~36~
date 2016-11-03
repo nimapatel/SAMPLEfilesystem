@@ -1,0 +1,126 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import filesystem.core.CoreFS;
+
+public class PartitionWizard
+    extends JDialog
+    implements ActionListener
+{
+  private JLabel lblHeading = new JLabel();
+  private JLabel jLabel1 = new JLabel();
+  private JTextField txtPartitionName = new JTextField();
+  private JLabel jLabel2 = new JLabel();
+  private JTextField txtPartitionSize = new JTextField();
+  private JLabel jLabel3 = new JLabel();
+  private JButton btnCreatePartition = new JButton();
+  private JButton btnCancel = new JButton();
+  private CoreFS cfs;
+  private FSGUI parent;
+  public PartitionWizard(FSGUI parent, CoreFS cfs)
+  {
+    super(parent, "Partition Wizard", true);
+    this.parent = parent;
+    btnCreatePartition.addActionListener(this);
+    btnCancel.addActionListener(this);
+    this.cfs = cfs;
+    try
+    {
+      jbInit();
+    }
+    catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
+
+  public void actionPerformed(ActionEvent e)
+  {
+    if(e.getSource().equals(btnCreatePartition))
+    {
+
+      String pname = txtPartitionName.getText();
+      String len = txtPartitionSize.getText();
+      try
+      {
+        if(pname.length() == 0)
+        {
+          JOptionPane.showMessageDialog(this, "Please enter partition name");
+        }
+        else
+        {
+          long size = Long.parseLong(len);
+          size = size * 1024 * 1024; //convert into bytes
+          cfs.createPhysicalDrive(pname, size);
+          JOptionPane.showMessageDialog(this, "Partition Created");
+          //open explorer,display description of the partition and graph
+
+          //Close this dialog and dispose it
+          this.setVisible(true);
+          this.dispose();
+        }
+      }
+      catch(NumberFormatException ex)
+      {
+        JOptionPane.showMessageDialog(this, "Enter valid number!");
+      }
+      catch(Exception ex)
+      {
+        JOptionPane.showMessageDialog(this,
+            "One or more errors generated while creating partition\n" +
+                                      ex.getMessage());
+      }
+    }
+    if(e.getSource().equals(btnCancel))
+    {
+      this.setVisible(false);
+      this.dispose();
+    }
+  }
+
+  private void jbInit() throws Exception
+  {
+    lblHeading.setFont(new java.awt.Font("Verdana", 1, 15));
+    lblHeading.setHorizontalAlignment(SwingConstants.CENTER);
+    lblHeading.setHorizontalTextPosition(SwingConstants.TRAILING);
+    lblHeading.setText("Create Partition");
+    lblHeading.setVerticalAlignment(javax.swing.SwingConstants.CENTER);
+    lblHeading.setVerticalTextPosition(javax.swing.SwingConstants.CENTER);
+    lblHeading.setBounds(new Rectangle(57, 8, 216, 29));
+    this.getContentPane().setBackground(Color.white);
+    this.setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+    this.setResizable(false);
+    this.setTitle("");
+    this.getContentPane().setLayout(null);
+    this.setBounds(250, 150, 310, 200);
+    jLabel1.setFont(new java.awt.Font("Verdana", 0, 11));
+    jLabel1.setText("Partition Name");
+    jLabel1.setBounds(new Rectangle(14, 60, 91, 19));
+    txtPartitionName.setText("");
+    txtPartitionName.setBounds(new Rectangle(118, 61, 158, 19));
+    jLabel2.setBounds(new Rectangle(14, 92, 91, 19));
+    jLabel2.setText("Partition Size");
+    jLabel2.setFont(new java.awt.Font("Verdana", 0, 11));
+    txtPartitionSize.setBounds(new Rectangle(118, 93, 120, 19));
+    txtPartitionSize.setText("");
+    jLabel3.setFont(new java.awt.Font("Verdana", 0, 11));
+    jLabel3.setText("Size in MB");
+    jLabel3.setBounds(new Rectangle(242, 93, 69, 19));
+    btnCreatePartition.setBounds(new Rectangle(44, 141, 103, 24));
+    btnCreatePartition.setText("Create");
+    btnCancel.setText("Cancel");
+    btnCancel.setBounds(new Rectangle(157, 141, 103, 24));
+    this.getContentPane().add(lblHeading, null);
+    this.getContentPane().add(txtPartitionName, null);
+    this.getContentPane().add(jLabel1, null);
+    this.getContentPane().add(txtPartitionSize, null);
+    this.getContentPane().add(jLabel2, null);
+    this.getContentPane().add(jLabel3, null);
+    this.getContentPane().add(btnCreatePartition, null);
+    this.getContentPane().add(btnCancel, null);
+    this.setVisible(true);
+  }
+
+}

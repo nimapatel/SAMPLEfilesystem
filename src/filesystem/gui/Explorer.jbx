@@ -1,0 +1,31 @@
+[PropertyInfo]
+address,String,false,false, , ,true,<default>
+addressField,JTextField,false,false, , ,false,<default>
+addressLabel,JLabel,false,false, , ,false,<default>
+backButton,ButtonIcon,false,false, , ,false,<default>
+bottomPanel,JPanel,false,false, , ,false,<default>
+browserPanel,JPanel,false,false, , ,false,<default>
+copyButton,ButtonIcon,false,false, , ,false,<default>
+currentSelectedFile,ButtonIcon,false,false, , ,true,<default>
+currentSelectedIcon,ButtonIcon,false,false, , ,true,<default>
+currSelected,ButtonIcon,false,false, , ,false,<default>
+currSelectedFile,ButtonIcon,false,false, , ,false,<default>
+cutButton,ButtonIcon,false,false, , ,false,<default>
+deleteButton,ButtonIcon,false,false, , ,false,<default>
+flowLayout1,FlowLayout,false,false, , ,false,<default>
+fPane,JScrollPane,false,false, , ,false,<default>
+goButton,ButtonIcon,false,false, , ,false,<default>
+mycomputer,ButtonIcon,false,false, , ,false,<default>
+next,Vector,false,false, , ,false,<default>
+nextButton,ButtonIcon,false,false, , ,false,<default>
+parent,FSGUI,false,false, , ,false,<default>
+pasteButton,ButtonIcon,false,false, , ,false,<default>
+previous,Vector,false,false, , ,false,<default>
+selectedButton,ButtonIcon,false,false, , ,true,<default>
+topPanel,JPanel,false,false, , ,false,<default>
+topPanel2,JPanel,false,false, , ,false,<default>
+[IconNames]
+
+
+
+

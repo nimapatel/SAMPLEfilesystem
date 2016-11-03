@@ -1,0 +1,49 @@
+package filesystem;
+
+import javax.swing.*;
+import java.awt.Image;
+import com.l2fprod.gui.plaf.skin.*;
+import com.l2fprod.util.OS;
+
+public class Runner
+{
+  private static void decorateUI() throws Exception
+  {
+    // if we are running with JDK1.4 decorates the frames and dialogs
+    if (OS.isOneDotFourOrMore())
+    {
+      java.lang.reflect.Method method = JFrame.class.getMethod(
+          "setDefaultLookAndFeelDecorated", new Class[]
+          {boolean.class});
+      method.invoke(null, new Object[]
+                    {Boolean.TRUE});
+      method = JDialog.class.getMethod("setDefaultLookAndFeelDecorated",
+                                       new Class[]
+                                       {boolean.class});
+      method.invoke(null, new Object[]
+                    {Boolean.TRUE});
+      Image frameIcon = new ImageIcon(filesystem.gui.FSGUI.class.getResource(
+          "windowicon.gif")).getImage();
+      // so option pane as same icon as us
+      JOptionPane.getRootFrame().setIconImage(frameIcon);
+    }
+  }
+
+  public static void main(String[] args)
+  {
+    try
+    {
+      Skin skin = new CompoundSkin(SkinLookAndFeel.loadThemePack(
+          "skins/crystal2themepack.zip"),
+                                   SkinLookAndFeel.loadThemePack(
+          "skins/crystal2themepack.zip"));
+      SkinLookAndFeel.setSkin(skin);
+      UIManager.setLookAndFeel("com.l2fprod.gui.plaf.skin.SkinLookAndFeel");
+      decorateUI();
+    }
+    catch (Exception ex)
+    {}
+
+    new filesystem.gui.FSGUI();
+  }
+}

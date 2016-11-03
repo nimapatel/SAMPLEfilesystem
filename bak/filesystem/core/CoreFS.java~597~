@@ -1,0 +1,580 @@
+package filesystem.core;
+
+import java.io.*;
+import java.util.Vector;
+
+public class CoreFS
+{
+  private FileSystem fs;
+
+  public CoreFS()
+  {
+    fs = new FileSystem();
+  }
+
+  public void createFileSystem(long size) throws Exception
+  {
+    File f = new File(FileSystem.FILE_SYSTEM_PATH);
+    if(f.exists())
+    {
+      f.delete();
+    }
+    RandomAccessFile raf = fs.OpenFile();
+    raf.setLength(size);
+    fs.closeFile();
+  }
+
+  public void createPhysicalDrive(String driveName, long size) throws Exception
+  {
+    RandomAccessFile raf = fs.OpenFile();
+    if(raf.readByte() != 0)
+    {
+      long totalSize = 0;
+      Object o[] = fs.readRoots();
+      Node rootNode = null;
+      for(int i = 0; i < o.length; i++)
+      {
+        rootNode = (Node) o[i];
+        totalSize += rootNode.getSizeOnDisk();
+      }
+      if( (getLength() - totalSize) < size)
+      {
+        fs.closeFile();
+        throw new Exception(
+            "You do not have enough space on the disk to create this partition");
+      }
+      else
+      {
+        long offset = rootNode.getOffset() + rootNode.getSizeOnDisk() + 1;
+        rootNode.setNodeLink(offset);
+
+        Node n = new Node(driveName, Kernel.ROOT, offset);
+        n.setSizeOnDisk(size);
+        n.setFreeSpace(size - Kernel.ROOT_SIZE);
+        n.setLastNodeWritten(n.getOffset() + Kernel.ROOT_SIZE);
+        fs.writeRootNode(rootNode, rootNode.getOffset());
+        fs.writeRootNode(n, offset);
+      }
+    }
+    else
+    {
+      //first check space
+
+      if(getLength() < size)
+      {
+        throw new Exception(
+            "You do not have enough space on the disk to create this partition");
+      }
+      //this is the first drive so lets create it..
+      Node n = new Node(driveName, Kernel.ROOT, 0);
+      n.setSizeOnDisk(size);
+      n.setFreeSpace(size - Kernel.ROOT_SIZE);
+      n.setLastNodeWritten(Kernel.ROOT_SIZE);
+      fs.writeRootNode(n, 0);
+    }
+    fs.closeFile();
+  }
+
+  public void createDirectory(Node root, String dirName) throws Exception
+  {
+
+    //throw error if there is not enough space to create a directory
+    if(root.getFreeSpace() < Kernel.DIRECTORY_SIZE)
+    {
+      throw new Exception("There is not enough space to create a directory");
+    }
+    else
+    {
+      fs.OpenFile();
+      long begOffset = root.getLastNodeWritten() + 1;
+
+      Node directoryNode = new Node(dirName, Kernel.DIRECTORY, begOffset);
+      //make link of this directory to last written node
+      Node lastNode = fs.getLastRootNode(root);
+      if(lastNode != null)
+      {
+        lastNode.setNodeLink(begOffset);
+        if(lastNode.isDirectory())
+          fs.writeDirectory(lastNode, lastNode.getOffset());
+        else if(lastNode.isFile())
+          fs.writeFile(lastNode);
+      }
+      fs.writeDirectory(directoryNode, begOffset);
+
+      //deduct directory size from root free space
+      root.setFreeSpace(root.getFreeSpace() - Kernel.DIRECTORY_SIZE);
+      root.setLastNodeOffset(begOffset);
+      root.setLastNodeWritten(begOffset + Kernel.DIRECTORY_SIZE);
+      fs.writeRootNode(root, root.getOffset());
+      fs.closeFile();
+    }
+  }
+
+  public void createDirectory(Node root, Node parentDir, String dirName) throws
+      Exception
+  {
+    //throw error if there is not enough space to create a directory
+    if(root.getFreeSpace() < Kernel.DIRECTORY_SIZE)
+    {
+      throw new Exception("There is not enough space to create a directory");
+    }
+    else
+    {
+      fs.OpenFile();
+      long begOffset = root.getLastNodeWritten() + 1;
+      Node directoryNode = new Node(dirName, Kernel.DIRECTORY, begOffset);
+
+      //write directory entry
+      fs.writeDirectory(directoryNode, begOffset);
+
+      //deduct directory size from root
+      root.setFreeSpace(root.getFreeSpace() - Kernel.DIRECTORY_SIZE);
+      /*add begining and last node's offset and size,
+               so we can add and reference next node easily*/
+      root.setLastNodeOffset(begOffset);
+      root.setLastNodeWritten(begOffset + Kernel.DIRECTORY_SIZE);
+
+      //update parent directory information
+      //check if parent directory has already child or not
+      if(parentDir.getChildNode() > 0)
+      {
+        //now traverse its child until you find last child node
+        Node childNode = fs.readNode(parentDir.getChildNode());
+        while(childNode.getNodeLink() != 0)
+        {
+          //traverse until finds last child
+          childNode = fs.readNode(childNode.getNodeLink());
+        }
+        //we have now its last child lets update its node link
+        childNode.setNodeLink(directoryNode.getOffset());
+        //write childnode
+        if(childNode.isDirectory())
+          fs.writeDirectory(childNode, childNode.getOffset());
+        else if(childNode.isFile())
+          fs.writeFile(childNode);
+      }
+      else //okay, this is the first child
+      {
+        parentDir.setChildNode(directoryNode.getOffset());
+        fs.writeDirectory(parentDir, parentDir.getOffset()); //write parent dir
+      }
+      //write root node information
+      fs.writeRootNode(root, root.getOffset());
+      fs.closeFile();
+    }
+  }
+
+  /*accepts root node and file and return true..if node is successfully
+    written & also open fs and  seek it into file position so that
+    we can write a file*/
+  public boolean writeFile(Node root, File file) throws Exception
+  {
+
+    //throw error if there is not enough space to create a file
+    if(root.getFreeSpace() < Kernel.FILE_SIZE + file.length())
+    {
+      throw new Exception("Not enough space to create this file");
+    }
+    else
+    {
+      fs.OpenFile();
+      long begOffset = root.getLastNodeWritten() + 1;
+
+      Node fileNode = new Node(file.getName(), Kernel.FILE, begOffset);
+      fileNode.setCanWrite(file.canWrite());
+      fileNode.setReadOnly((file.canWrite()==false ? true : false));
+      fileNode.setHidden(file.isHidden());
+      fileNode.setLastModified(file.lastModified());
+      fileNode.setSizeOnDisk(file.length());
+      fileNode.setFile(file);
+
+      //make link of this directory to last written node
+      Node lastNode = fs.getLastRootNode(root);
+      if(lastNode != null)
+      {
+        lastNode.setNodeLink(begOffset);
+        if(lastNode.isDirectory())
+        {
+          fs.writeDirectory(lastNode, lastNode.getOffset());
+        }
+        else if(lastNode.isFile())
+        {
+          fs.writeFile(lastNode);
+        }
+      }
+      fs.writeFile(fileNode);
+      //deduct directory size from root free space
+      root.setFreeSpace(root.getFreeSpace() - (Kernel.FILE_SIZE + file.length()));
+      root.setLastNodeOffset(begOffset);
+      root.setLastNodeWritten(begOffset + Kernel.FILE_SIZE + file.length());
+      fs.writeRootNode(root, root.getOffset());
+      fs.closeFile();
+      openFSFWrite(fileNode.getOffset() + Kernel.FILE_SIZE + 1);
+      return true;
+    }
+  }
+
+  /*
+    write the file in the directory
+    return the true..if node is successfully written & also open fs and
+    seek it into file position so that we can write a file*/
+  public boolean writeFile(Node root, Node parentDir, File file) throws
+      Exception
+  {
+
+    //throw error if there is not enough space to create a file
+    if(root.getFreeSpace() < Kernel.FILE_SIZE + file.length())
+    {
+      throw new Exception("Not enough space to create this file");
+    }
+    else
+    {
+      fs.OpenFile();
+      long begOffset = root.getLastNodeWritten() + 1;
+
+      Node fileNode = new Node(file.getName(), Kernel.FILE, begOffset);
+      fileNode.setCanWrite(file.canWrite());
+      fileNode.setReadOnly(file.canRead());
+      fileNode.setHidden(file.isHidden());
+      fileNode.setLastModified(file.lastModified());
+      fileNode.setSizeOnDisk(file.length());
+      fileNode.setFile(file);
+
+      //update parent directory information
+      //check if parent directory has already child or not
+      if(parentDir.getChildNode() > 0)
+      {
+        //now traverse its child until you find last child node
+        Node childNode = fs.readNode(parentDir.getChildNode());
+        while(childNode.getNodeLink() != 0)
+        {
+          //traverse until finds last child
+          childNode = fs.readNode(childNode.getNodeLink());
+        }
+        //we have now its last child lets update its node link
+        childNode.setNodeLink(fileNode.getOffset());
+        //update childnode
+        if(childNode.isDirectory())
+        {
+          fs.writeDirectory(childNode, childNode.getOffset());
+        }
+        else if(childNode.isFile())
+        {
+          fs.writeFile(childNode);
+        }
+      }
+      else //okay, this is the first child
+      {
+        parentDir.setChildNode(fileNode.getOffset());
+        fs.writeDirectory(parentDir, parentDir.getOffset()); //write parent dir
+      }
+
+      fs.writeFile(fileNode);
+      //deduct directory size from root free space
+      root.setFreeSpace(root.getFreeSpace() - (Kernel.FILE_SIZE + file.length()));
+      root.setLastNodeOffset(begOffset);
+      root.setLastNodeWritten(begOffset + Kernel.FILE_SIZE + file.length());
+      fs.writeRootNode(root, root.getOffset());
+      fs.closeFile();
+      openFSFWrite(fileNode.getOffset() + Kernel.FILE_SIZE + 1);
+      return true;
+    }
+  }
+
+  //this method will open file system and will allow file write content method
+  //to write bytes. and finally close method will be called
+  private boolean openFSFWrite(long offset)
+  {
+    try
+    {
+      RandomAccessFile raf = fs.OpenFile();
+      raf.seek(offset);
+      return true;
+    }
+    catch(Exception ex)
+    {
+      return false;
+    }
+
+  }
+
+  //write file contents
+  public void writeFileContents(byte b) throws Exception
+  {
+    fs.writeFileContents(b);
+  }
+
+  //close file system when finished to write file contents
+  public boolean CloseFS()
+  {
+    try
+    {
+      fs.closeFile();
+      return true;
+    }
+    catch(Exception ex)
+    {
+      return false;
+    }
+
+  }
+
+  //return the file system length in bytes
+  public long getLength()
+  {
+    File f = new File(FileSystem.FILE_SYSTEM_PATH);
+    return f.length();
+  }
+
+  public boolean isFileSystemEmpty()
+  {
+    return fs.isFileSystemEmpty();
+  }
+
+  public Object[] getRoots() throws Exception
+  {
+    fs.OpenFile();
+    Object o[] = fs.readRoots();
+    fs.closeFile();
+    return o;
+  }
+
+  public Object[] getRootContents(Node aRoot)
+  {
+    try
+    {
+      fs.OpenFile();
+      Object o[];
+      o = fs.readRoot(aRoot);
+      fs.closeFile();
+      return o;
+    }
+    catch(Exception ex)
+    {
+      ex.printStackTrace();
+      return null;
+    }
+  }
+
+  public Object[] getFolderContents(Node folder)
+  {
+    try
+    {
+      fs.OpenFile();
+      Vector v = new Vector();
+      if(folder.getChildNode() > 0)
+      {
+        Node n = fs.readNode(folder.getChildNode());
+        n.setPreviousNode(folder);
+        while(n.getNodeLink() > 0)
+        {
+          //set the parent node for this child
+          n.setParentNode(folder.getParentNode());
+          n.setParentDirectory(folder);
+          v.add(n);
+          Node previousNode = n;
+          n = fs.readNode(n.getNodeLink());
+          n.setPreviousNode(previousNode);
+        }
+        n.setParentNode(folder.getParentNode());
+        n.setParentDirectory(folder);
+        v.add(n);
+      }
+      fs.closeFile();
+
+      if(v.size() == 0)
+      {
+        return null;
+      }
+      return v.toArray();
+    }
+    catch(Exception ex)
+    {
+      System.err.println("Unable to get folder contents: " + ex.getMessage());
+      return null;
+    }
+  }
+  public boolean transferContent(Node source, String location)
+  {
+    try
+    {
+      fs.OpenFile();
+      if(source.isDirectory())
+      {
+
+      }
+      else if(source.isFile())
+        transferFile(source, location);
+      fs.closeFile();
+      return true;
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Exception in File Transfer: " + ex.getMessage());
+      ex.printStackTrace();
+      return false;
+    }
+  }
+  private void transferFile(Node file, String dest) throws Exception
+  {
+    RandomAccessFile raf = fs.getRAF();
+    long pos = 0;
+    long offset = file.getOffset()+Kernel.FILE_SIZE+1;
+    raf.seek(offset);
+    FileOutputStream fos = new FileOutputStream(dest+"\\"+file.getNodeName());
+    while(pos < file.getSizeOnDisk())
+    {
+      raf.seek(offset+pos);
+      fos.write((byte)raf.read());
+      pos++;
+    }
+    fos.close();
+  }
+  /*
+     Check the node type and rename it
+   */
+  public boolean rename(Node rn)
+  {
+    try
+    {
+      fs.OpenFile();
+      if(rn.isRoot())
+      {
+        fs.writeRootNode(rn, rn.getOffset());
+      }
+      if(rn.isDirectory())
+      {
+        fs.writeDirectory(rn, rn.getOffset());
+      }
+      if(rn.isFile())
+      {
+        fs.writeFile(rn);
+      }
+      fs.closeFile();
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Unable to rename: " + ex.getMessage());
+      return false;
+    }
+    return true;
+
+  }
+
+  public boolean deleteNode(Node n)
+  {
+    try
+    {
+      fs.OpenFile();
+      boolean flag = fs.deleteNode(n);
+      fs.closeFile();
+      return flag;
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Unable to delete folder: " + ex.getMessage());
+      ex.printStackTrace();
+      return false;
+    }
+  }
+
+  //print roots
+  private void printRoots()
+  {
+    try
+    {
+      Object o[] = getRoots();
+      for(int i = 0; i < o.length; i++)
+      {
+        System.out.println( ( (Node) o[i]).getNodeName());
+      }
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Unable to print roots");
+      ex.printStackTrace();
+    }
+  }
+
+  private void print(Object o[])
+  {
+    for(int i = 0; i < o.length; i++)
+    {
+      System.out.println( ( (Node) o[i]).getNodeName());
+    }
+
+  }
+
+/*  public static void main(String[] args)
+  {
+    try
+    {
+
+      CoreFS cfs = new CoreFS();
+      cfs.createFileSystem(4 * 1024 * 1024);
+      FileSystem fs = new FileSystem();
+      cfs.createPhysicalDrive("C", (1 * 1024 * 1024));
+      cfs.createPhysicalDrive("D", (1 * 1024 * 1024));
+      cfs.createPhysicalDrive("E", (2 * 1024 * 1024));
+      Object o[] = cfs.getRoots();
+      //cfs.printRoots();
+
+      Node root = (Node) o[0];
+      //cfs.createDirectory(root, "Dir1");
+      //cfs.createDirectory(root, "Dir2");
+      //cfs.createDirectory(root, "Dir3");
+      //o = cfs.getRootContents(root);
+      //display root contents
+      //cfs.print(o);
+
+//      o = cfs.getRoots();
+
+      root = (Node) o[1];
+      cfs.createDirectory(root, "Root1");
+//      cfs.printRoots();
+
+      cfs.createDirectory(root, "Root2");
+      cfs.createDirectory(root, "Root3");
+
+      File f = new File("c:\\tm.txt");
+      cfs.writeFile(root, f);
+      FileInputStream fin = new FileInputStream(f);
+      byte b;
+      while( (b = (byte) fin.read()) > 0)
+      {
+        cfs.writeFileContents(b);
+      }
+      cfs.CloseFS();
+      o = cfs.getRootContents(root);
+      //display root contents
+      for(int i = 0; i < o.length; i++)
+      {
+        Node n = (Node) o[i];
+        System.out.println(n.getNodeName() + "  " + n.getOffset() +
+                           "   pointing to: " + n.getNodeLink());
+      }
+
+      Node dir = (Node) o[0];
+      f = new File("c:\\out.txt");
+      cfs.writeFile(root, dir, f);
+      fin = new FileInputStream(f);
+      while( (b = (byte) fin.read()) > 0)
+      {
+        cfs.writeFileContents(b);
+      }
+      cfs.CloseFS();
+      //CREATING CHILD DIRECTORY
+      cfs.createDirectory(root, dir, "CHILD");
+      cfs.createDirectory(root, dir, "TEST");
+      o = cfs.getFolderContents(dir);
+      for(int i = 0; i < o.length; i++)
+      {
+        System.out.println( ( (Node) o[i]).getNodeName());
+      }
+    }
+    catch(Exception ex)
+    {
+      ex.printStackTrace();
+    }
+  }*/
+}

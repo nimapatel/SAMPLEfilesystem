@@ -1,0 +1,8 @@
+package filesystem.core;
+
+public class Partition
+{
+  public Partition()
+  {
+  }
+}

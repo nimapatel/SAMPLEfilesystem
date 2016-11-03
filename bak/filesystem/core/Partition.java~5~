@@ -1,0 +1,30 @@
+package filesystem.core;
+
+public class Partition
+{
+  private String partitionName;
+  private long size;
+
+  public Partition(){}
+  public Partition(String pn, long size)
+  {
+    this.partitionName = pn;
+    this.size = size;
+  }
+  public void setPartitionName(String name)
+  {
+    this.partitionName = name;
+  }
+  public String getPartitionName()
+  {
+    return this.partitionName;
+  }
+  public void setPartitionSize(long size)
+  {
+    this.size = size;
+  }
+  public long getPartitionSize()
+  {
+    return size;
+  }
+}

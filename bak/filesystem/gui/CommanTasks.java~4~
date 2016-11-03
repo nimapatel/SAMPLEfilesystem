@@ -1,0 +1,25 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class CommanTasks extends JPanel
+{
+  public CommanTasks()
+  {
+    try
+    {
+      jbInit();
+    }
+    catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+  }
+  private void jbInit() throws Exception
+  {
+    this.setLayout(null);
+    this.setSize(193,515);
+  }
+
+}

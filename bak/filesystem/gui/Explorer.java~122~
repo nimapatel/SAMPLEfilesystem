@@ -1,0 +1,401 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.beans.*;
+import java.util.Vector;
+import filesystem.core.Node;
+import java.io.*;
+import filesystem.core.CoreFS;
+
+public class Explorer
+    extends JPanel
+    implements ActionListener
+{
+  private JPanel topPanel;
+  private ButtonIcon mycomputer;
+  private ButtonIcon goButton;
+  private FlowLayout flowLayout1;
+  private JScrollPane fPane;
+  private JPanel browserPanel;
+  private JTextField addressField;
+  private JLabel addressLabel;
+  private ButtonIcon backButton;
+  private ButtonIcon nextButton;
+  private ButtonIcon deleteButton;
+  private ButtonIcon cutButton;
+  private ButtonIcon copyButton;
+  private ButtonIcon transferContentButton;
+  private ButtonIcon pasteButton;
+  private ButtonIcon selectedButton;
+  private Vector previous; //for back
+  private Vector next;
+  private JPanel bottomPanel = new JPanel(); //forward
+  private FSGUI parent;
+  private ButtonIcon currSelected; //current selected node button
+
+//  private ButtonIcon currSelectedIcon; //current selected icon e.g my computer
+  private ButtonIcon currSelectedFile;
+  private JPanel topPanel2;
+
+  public Explorer(FSGUI p)
+  {
+    parent = p;
+    mycomputer = new ButtonIcon(this);
+    mycomputer.setText("My Computer");
+    mycomputer.setLabelIcon("mycomputer");
+    mycomputer.repackComponent();
+    //mycomputer.setSize(new Dimension(32, 32));
+
+    backButton = new ButtonIcon(this);
+    backButton.setText("Back");
+    backButton.setLabelIcon("back");
+    //backButton.setAlignment();
+    backButton.setToolTipText("Back");
+    next = new Vector();
+    previous = new Vector();
+
+    goButton = new ButtonIcon(this);
+    goButton.setLabelIcon("go");
+
+    nextButton = new ButtonIcon(this);
+    nextButton.setLabelIcon("next");
+    nextButton.setText("Next");
+    //nextButton.setAlignment();
+    nextButton.setToolTipText("Next");
+
+    transferContentButton = new ButtonIcon(this);
+    transferContentButton.setLabelIcon("Transfer");
+    transferContentButton.setText("Transfer");
+    transferContentButton.setToolTipText("Transfer file to your disk drive");
+    transferContentButton.repackComponent();
+    try
+    {
+      jbInit();
+    }
+    catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+
+    deleteButton = new ButtonIcon(this);
+    deleteButton.setLabelIcon("delete");
+    deleteButton.setText("Delete");
+    deleteButton.setToolTipText("Delete");
+
+    cutButton = new ButtonIcon(this);
+    cutButton.setLabelIcon("cut");
+    cutButton.setText("Cut");
+    cutButton.setToolTipText("Cut");
+
+    copyButton = new ButtonIcon(this);
+    copyButton.setLabelIcon("copy");
+    copyButton.setText("Copy");
+    copyButton.setToolTipText("Copy");
+
+    pasteButton = new ButtonIcon(this);
+    pasteButton.setLabelIcon("paste");
+    pasteButton.setText("paste");
+    pasteButton.setToolTipText("Paste");
+
+    bottomPanel.add(deleteButton);
+    bottomPanel.add(cutButton);
+    bottomPanel.add(copyButton);
+    bottomPanel.add(pasteButton);
+    bottomPanel.add(transferContentButton);
+
+    showRoots();
+  }
+
+  public void showRoots()
+  {
+    try
+    {
+      browserPanel.removeAll();
+      if(!parent.getCoreFS().isFileSystemEmpty())
+      {
+        Object roots[] = parent.getCoreFS().getRoots();
+        if(roots != null && roots.length > 0)
+        {
+          ButtonIcon root[] = new ButtonIcon[roots.length];
+          for(int i = 0; i < roots.length; i++)
+          {
+            Node aRoot = (Node) roots[i];
+            root[i] = new ButtonIcon(this);
+            root[i].setLabelIcon("harddrive");
+            root[i].setNode(aRoot);
+            root[i].setText(aRoot.getNodeName());
+            browserPanel.add(root[i]);
+          }
+        }
+        browserPanel.updateUI();
+      }
+    }
+    catch(Exception e)
+    {
+      JOptionPane.showMessageDialog(parent, "Unable to display Roots");
+      e.printStackTrace();
+    }
+  }
+
+  //get the root contents and display them in browser panel
+  public void showRootContents(Node aRoot)
+  {
+    ButtonIcon tmp = new ButtonIcon();
+    tmp.setNode(aRoot);
+    this.selectedButton = tmp; //make this default
+    Object contents[] = parent.getCoreFS().getRootContents(aRoot);
+    addContents(contents);
+  }
+
+  public void showFolderContents(Node folder)
+  {
+    ButtonIcon tmp = new ButtonIcon();
+    tmp.setNode(folder);
+    this.selectedButton = tmp; //make this default
+
+    Object o[] = parent.getCoreFS().getFolderContents(folder);
+    addContents(o);
+  }
+
+  public void createNewFile(Node root, File f)
+  {
+    CoreFS fs = parent.getCoreFS();
+    if(root.isRoot()) //check if it is root drive
+    {
+      try
+      {
+        if(fs.writeFile(root, f))
+        {
+          FileInputStream fin = new FileInputStream(f);
+          byte b;
+          while( (b = (byte) fin.read()) > 0)
+          {
+            fs.writeFileContents(b); //show progress bar here
+          }
+          fs.CloseFS(); //close the file system
+          showRootContents(root);
+        }
+        else
+        {
+          JOptionPane.showMessageDialog(parent, "Unable to create file");
+        }
+      }
+      catch(Exception ex)
+      {
+        JOptionPane.showMessageDialog(parent,
+                                      "Unable to copy file: " + ex.getMessage());
+      }
+    }
+    else if(root.isDirectory()) //we have directory
+    {
+      try
+      {
+        if(fs.writeFile(root.getParentDirectory(), root, f))
+        {
+          FileInputStream fin = new FileInputStream(f);
+          byte b;
+          while( (b = (byte) fin.read()) > 0)
+          {
+            fs.writeFileContents(b); //show progress bar here
+          }
+          fs.CloseFS(); //close the file system
+          showFolderContents(root);
+        }
+        else
+        {
+          JOptionPane.showMessageDialog(parent, "Unable to create file");
+        }
+      }
+      catch(Exception ex)
+      {
+        JOptionPane.showMessageDialog(parent,
+                                      "Unable to copy file: " + ex.getMessage());
+      }
+    }
+  }
+
+  public void setCurrentSelectedIcon(ButtonIcon currSel)
+  {
+    if(currSel != null)
+    {
+      currSel.setUnSelected();
+
+    }
+    this.currSelected = currSel;
+  }
+
+  public ButtonIcon getCurrentSelectedIcon()
+  {
+    return currSelected;
+  }
+
+  public String getAddress()
+  {
+    return addressField.getText();
+  }
+
+  //purpose of this method to select and unselect icons
+  public void setSelectedButton(ButtonIcon sb)
+  {
+    if(selectedButton != null && !selectedButton.equals(sb))
+    {
+      selectedButton.setUnSelected();
+
+    }
+    this.selectedButton = sb;
+    //display description of node
+    String n = selectedButton.getButtonName();
+    if(!n.equals("go") && !n.equals("back") &&
+       !n.equals("next") && !n.equals("cut") && !n.equals("copy") &&
+       !n.equals("paste") && !n.equals("delete") && !n.equals("Transfer"))
+    {
+      parent.displayDescription(selectedButton);
+      this.selectFile(selectedButton);
+
+    }
+    else
+    {
+      parent.clearDescription();
+    }
+    selectFile(selectedButton);
+
+    sb.updateUI();
+  }
+
+  //purpose of this method to select file or folders
+  //internally called by setSelectedButton when a click event generates
+  private void selectFile(ButtonIcon f)
+  {
+    if(f.getNode() != null)
+    {
+      setCurrentSelectedFile(f);
+    }
+  }
+
+  public ButtonIcon getSelectedButton()
+  {
+    return selectedButton;
+  }
+
+  private void setCurrentSelectedFile(ButtonIcon f)
+  {
+    this.currSelectedFile = f;
+  }
+
+  public ButtonIcon getCurrentSelectedFile()
+  {
+    return currSelectedFile;
+  }
+
+  public void actionPerformed(ActionEvent e)
+  {
+
+  }
+
+  /*internally called, when action is performed on button
+    This method will create buttons in browser panel and will
+    display in the browser panel*/
+  private void addContents(Object contents[])
+  {
+    browserPanel.removeAll();
+    if(contents != null && contents.length > 0)
+    {
+      ButtonIcon nodes[] = new ButtonIcon[contents.length];
+      for(int i = 0; i < contents.length; i++)
+      {
+        Node aNode = (Node) contents[i];
+        if(!aNode.isDeleted())
+        {
+          nodes[i] = new ButtonIcon(this);
+          if(aNode.isDirectory())
+          {
+            nodes[i].setLabelIcon("folder");
+          }
+          else if(aNode.isFile())
+          {
+            nodes[i].setLabelIcon("unknown");
+          }
+          nodes[i].setNode(aNode);
+          nodes[i].setText(aNode.getNodeName());
+          browserPanel.add(nodes[i]);
+        }
+      }
+    }
+    browserPanel.updateUI();
+
+  }
+
+  private void jbInit() throws Exception
+  {
+    topPanel = (JPanel) Beans.instantiate(getClass().getClassLoader(),
+                                          JPanel.class.getName());
+    fPane = (JScrollPane) Beans.instantiate(getClass().getClassLoader(),
+                                            JScrollPane.class.getName());
+    topPanel2 = (JPanel) Beans.instantiate(getClass().getClassLoader(),
+                                           JPanel.class.getName());
+    browserPanel = (JPanel) Beans.instantiate(getClass().getClassLoader(),
+                                              JPanel.class.getName());
+    flowLayout1 = (FlowLayout) Beans.instantiate(getClass().getClassLoader(),
+                                                 FlowLayout.class.getName());
+    addressField = (JTextField) Beans.instantiate(getClass().getClassLoader(),
+                                                  JTextField.class.getName());
+    addressLabel = (JLabel) Beans.instantiate(getClass().getClassLoader(),
+                                              JLabel.class.getName());
+    this.setLayout(null);
+    this.setBounds(new Rectangle(8, 98, 214, 437));
+    topPanel.setBounds(new Rectangle(1, 1, 409, 53));
+    topPanel2.setBounds(new Rectangle( -11, 78, 163, 39));
+    flowLayout1.setAlignment(FlowLayout.LEFT);
+    topPanel.setLayout(flowLayout1);
+    topPanel2.setLayout(flowLayout1);
+    browserPanel.setLayout(flowLayout1);
+    fPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    fPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+    fPane.setBorder(null);
+    fPane.setBounds(new Rectangle(2, 120, 581, 274));
+
+    goButton.setBounds(new Rectangle(533, 51, 45, 33));
+    goButton.setToolTipText("Go");
+    addressField.setBounds(new Rectangle(54, 58, 483, 18));
+    addressField.addActionListener(this);
+    addressLabel.setLabelFor(addressField);
+    addressLabel.setText("Address");
+    addressLabel.setBounds(new Rectangle(2, 55, 51, 19));
+
+    bottomPanel.setBounds(new Rectangle(1, 391, 538, 57));
+    this.add(fPane, null);
+    topPanel2.add(backButton);
+    topPanel2.add(nextButton);
+    this.add(bottomPanel, null);
+    this.add(goButton, null);
+
+    this.add(topPanel, null);
+    topPanel.add(mycomputer, null);
+    this.add(addressField, null);
+    this.add(addressLabel, null);
+    this.add(topPanel2, null);
+    fPane.getViewport().add(browserPanel, null);
+  }
+
+  public void mouseClicked(MouseEvent e)
+  {
+  }
+
+  public void mousePressed(MouseEvent e)
+  {
+  }
+
+  public void mouseReleased(MouseEvent e)
+  {
+  }
+
+  public void mouseEntered(MouseEvent e)
+  {
+  }
+
+  public void mouseExited(MouseEvent e)
+  {
+  }
+}

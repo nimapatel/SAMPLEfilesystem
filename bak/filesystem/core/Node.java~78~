@@ -1,0 +1,201 @@
+package filesystem.core;
+
+public class Node
+{
+  /*
+  specified storage
+  ROOT entry will take will 49 bytes
+  DIRECTORY entry will take 17 bytes
+  */
+  private byte nodeType;
+  private long offset;
+  private long nodeLink=0;
+  private long freeSpace;
+  private long sizeOnDisk; //this will be used for root node and file
+  private byte nodeStatus = 0; //whether it is deleted or not
+  private long lastNodeOffset; //begining pos of written node in root
+  private long lastNodeWritten; //last pos of written node
+
+  private long childNode=0; //refer to the child node offset
+  public static int MAX_NODE_LENGTH = 8;
+  public byte[] nodeName = new byte[MAX_NODE_LENGTH] ;
+  private Node parent; /*root node, I will I won't store
+                         this information in filesystem*/
+  private Node previousNode; /*previous node for traversing, this will also
+                               not be stored in filesystem. used for traversing
+                              */
+  private Node parentDirectory;
+
+  //FILE ATTRIBUTES
+  private long lastModified;
+  private boolean isReadOnly; //boolean attributes will be stored in single
+  private boolean isWritable; //byte variable
+  private boolean isHidden;
+
+
+  public Node() {}
+
+  public Node(String nodeName, byte nodeType, long offset)
+  {
+    setNodeName(nodeName);
+    this.nodeType = nodeType;
+    this.offset = offset;
+  }
+  public void setNodeName( String newName )
+  {
+    for( int i = 0 ; i < MAX_NODE_LENGTH && i < newName.length() ; i ++ )
+      if( i < newName.length() )
+        nodeName[i] = (byte)newName.charAt(i) ;
+      else
+        nodeName[i] = (byte)0 ;
+  }
+  public String getNodeName()
+  {
+    StringBuffer s = new StringBuffer( MAX_NODE_LENGTH ) ;
+    for( int i = 0 ; i < MAX_NODE_LENGTH ; i ++ )
+    {
+      if ( nodeName[i] == (byte)0 )
+        break ;
+      s.append( (char)nodeName[i] ) ;
+    }
+    return s.toString() ;
+  }
+  public byte[] getNodeNamebytes()
+  {
+    return nodeName;
+  }
+  public void setNodeType(byte nType)
+  {
+    nodeType = nType;
+  }
+  public byte getNodeType()
+  {
+    return nodeType;
+  }
+  public void setOffset(long offset)
+  {
+    this.offset = offset;
+  }
+  public long getOffset()
+  {
+    return offset;
+  }
+  public void setNodeLink(long nLink)
+  {
+    nodeLink = nLink;
+  }
+  public long getNodeLink()
+  {
+    return nodeLink;
+  }
+  public void setSizeOnDisk(long sod)
+  {
+    sizeOnDisk = sod;
+  }
+  public long getSizeOnDisk()
+  {
+    return sizeOnDisk;
+  }
+  public void setFreeSpace(long fspace)
+  {
+    freeSpace = fspace;
+  }
+  public long getFreeSpace()
+  {
+    return freeSpace;
+  }
+  /*sets the begining position of the written node in root*/
+  public void setLastNodeOffset(long begPos)
+  {
+    this.lastNodeOffset = begPos;
+  }
+  public long getLastNodeOffset()
+  {
+    return lastNodeOffset;
+  }
+  /*sets the last position of the written node in root*/
+  public void setLastNodeWritten(long lastNodeW)
+  {
+    this.lastNodeWritten = lastNodeW;
+  }
+  public long getLastNodeWritten()
+  {
+    return lastNodeWritten;
+  }
+  public void setStatus(byte status)
+  {
+    this.nodeStatus = status;
+  }
+  public byte getStatus()
+  {
+    return nodeStatus;
+  }
+  public void setChildNode(long childNode)
+  {
+    this.childNode = childNode;
+  }
+  public long getChildNode()
+  {
+    return childNode;
+  }
+  public boolean isDirectory()
+  {
+    return Kernel.DIRECTORY == this.getNodeType();
+  }
+  public boolean isRoot()
+  {
+    return Kernel.ROOT == this.getNodeType();
+  }
+  public boolean isFile()
+  {
+    return Kernel.FILE == this.getNodeType();
+  }
+  public void setParentNode(Node parent)
+  {
+    this.parent = parent;
+  }
+  public boolean isDeleted()
+  {
+    return getStatus()==Kernel.IS_DELETED;
+  }
+  public Node getParentNode()
+  {
+    return parent;
+  }
+  public void setPreviousNode(Node previous)
+  {
+    previousNode = previous;
+  }
+  /*
+  IF this node is null then it will be considered as the first node
+  of the root
+  */
+  public Node getPreviousNode()
+  {
+    return previousNode;
+  }
+  public void setParentDirectory(Node n)
+  {
+    this.parentDirectory = n;
+  }
+  public Node getParentDirectory()
+  {
+    return this.parentDirectory;
+  }
+  public void setLastModified(long lastModified)
+  {
+    this.lastModified = lastModified;
+  }
+  public long getLastModified()
+  {
+    return lastModified;
+  }
+  public void setReadOnly(boolean flag)
+  {
+    this.isReadOnly = flag;
+  }
+  public boolean isReadOnly()
+  {
+    return isReadOnly;
+  }
+}

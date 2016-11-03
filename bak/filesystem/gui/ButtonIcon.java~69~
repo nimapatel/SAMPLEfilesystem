@@ -1,0 +1,281 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import filesystem.core.Node;
+import filesystem.util.ClipBoard;
+import java.io.File;
+
+public class ButtonIcon
+    extends JPanel
+    implements MouseListener
+{
+  private String myStatus; //status --> currently where user is browsing
+  private String name;
+  private Explorer parent;
+  private boolean selected = false;
+  private Image img;
+  private String text = "";
+  private JList list;
+
+  private int x = -1;
+  private Node aNode;
+
+  public ButtonIcon()
+  {}
+
+  public ButtonIcon(Explorer p)
+  {
+    parent = p;
+    list = new JList();
+
+    list.setFont(new Font("Arial", Font.PLAIN, 9));
+    list.setBounds(0, 34, 48, 35);
+    this.setLayout(null);
+    this.add(list);
+    this.setPreferredSize(new Dimension(48, 45));
+    this.setOpaque(false);
+    this.addMouseListener(this);
+    list.addMouseListener(this);
+
+  }
+
+  public void setLabelIcon(String iconName)
+  {
+    ImageIcon icon = new ImageIcon("images/" + iconName + ".gif");
+    img = icon.getImage();
+    name = iconName;
+  }
+
+  public void setNode(Node n)
+  {
+    aNode = n;
+    this.setToolTipText(aNode.getNodeName());
+  }
+
+  public Node getNode()
+  {
+    return aNode;
+  }
+
+  public void paintComponent(Graphics g)
+  {
+    if(img != null)
+    {
+      Graphics2D g2d = (Graphics2D) g.create();
+
+      AlphaComposite composite; // = AlphaComposite.Xor;
+      composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5F);
+      if(selected)
+      {
+        g2d.setComposite(composite);
+      }
+
+      if(x != -1)
+      {
+        g2d.drawImage(img, x, 0, 32, 32, this);
+      }
+      else
+      {
+        g2d.drawImage(img, 6, 0, 32, 32, this);
+      }
+      composite = AlphaComposite.getInstance(AlphaComposite.CLEAR, 1.0f);
+      if(!selected)
+      {
+        g2d.setComposite(composite);
+      }
+      g2d.setFont(new Font("Arial", Font.PLAIN, 9));
+      g2d.dispose();
+    }
+
+    //repaint();
+  }
+
+  //some components have more size than orginal so it needs to be repacked
+
+  public void repackComponent()
+  {
+    if(text != null || text.length() != 0)
+    {
+      int pos = 0;
+      if(text.length() == 1)
+      {
+        pos = (int) 48 / (text.length() + 2);
+      }
+      else
+      {
+        pos = (int) 48 / (text.length() + 1);
+
+      }
+      int width = ( (48 + text.length()) + 5);
+      x = 6 + text.length();
+      list.setBounds(pos, 34, width, 26);
+      this.setPreferredSize(new Dimension(width, 45));
+    }
+  }
+
+  public void setText(String t)
+  {
+    text = t;
+    list.setOpaque(false);
+    list.setBackground(getBackground());
+
+    int pos = 0;
+    text = text.trim();
+    if(text.length() == 1)
+    {
+      pos = (int) 48 / (text.length() + 2);
+    }
+    else
+    {
+      pos = (int) 48 / (text.length() + 1);
+
+    }
+    list.setBounds(pos, 34, (48 - (pos + 10)), 26);
+
+    if(t != null || t.length() != 0)
+    {
+      list.setListData(new String[]
+                       {text});
+    }
+    else
+    {
+      list.setVisible(false);
+    }
+  }
+
+  public void setStatus(String ms)
+  {
+    myStatus = ms;
+  }
+
+  public String getStatus()
+  {
+    return myStatus;
+  }
+
+  public String getButtonName()
+  {
+    return name;
+  }
+
+  public void setUnSelected()
+  {
+    selected = false;
+    try{
+      list.clearSelection();
+    }catch(Exception ex){}
+    this.updateUI();
+  }
+
+  public void mouseExited(MouseEvent e)
+  {}
+
+  public void mouseEntered(MouseEvent e)
+  {}
+
+  public void mouseReleased(MouseEvent e)
+  {}
+
+  public void mousePressed(MouseEvent e)
+  {}
+
+  public void mouseClicked(MouseEvent e)
+  {
+
+    if(e.getClickCount() == 1)
+    {
+      selected = true;
+      parent.setSelectedButton(this);
+      list.setSelectedIndex(0);
+      if(name.equals("go"))
+      {
+        //parent.goAddress();
+      }
+      else if(name.equals("delete"))
+      {
+        /*if (parent.getCurrentSelectedFile() != null )
+                 {
+          parent.performDelete(parent.getCurrentSelectedFile().myStatus);
+                 }*/
+      }
+      else if(name.equals("cut"))
+      {
+
+      }
+      else if(name.equals("copy"))
+      {
+        //ClipBoard.setLocalClipBoard(parent.getCurrentSelectedFile().myStatus, true);
+      }
+      else if(name.equals("paste"))
+      {
+        if(!ClipBoard.isClipboardEmpty())
+        {
+          if(parent.getCurrentSelectedFile() != null &&parent.getCurrentSelectedFile().getNode() != null)
+          {
+            Node n = parent.getCurrentSelectedFile().getNode();
+            if(n.isRoot() || n.isDirectory())
+            {
+              File files[] = ClipBoard.getClipboard();
+              for(int i=0;i<files.length;i++)
+              {
+                parent.createNewFile(n, files[i]);
+              }
+            }
+          }
+        }
+      }
+      else if(name.equals("back"))
+      {
+        //parent.performBackOperation();
+      }
+      else if(name.equals("next"))
+      {
+        //parent.performNextOperation();
+      }
+      else if(name.equals("harddrive"))
+      {
+
+      }
+      else if(name.equals("Transfer"))
+      {
+        if(parent.getSelectedButton().getNode() != null)
+        {
+          if(!parent.getSelectedButton().getNode().isRoot())
+          {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
+            int opt = fileChooser.showSaveDialog(this);
+            if(opt ==JFileChooser.APPROVE_OPTION)
+            {
+              System.out.println("PATH: " + fileChooser.getSelectedFile());
+            }
+          }
+        }
+      }
+      else //we have folder or button
+      {
+        //parent.setSelectedButton(this);
+      }
+
+    }
+    else if(e.getClickCount() == 2)
+    {
+      if(name.equals("mycomputer"))
+      {
+        parent.showRoots();
+      }
+      else if(name.equals("harddrive"))
+      {
+        parent.setSelectedButton(this);
+        parent.showRootContents(this.getNode());
+      }
+      else if(name.equals("folder"))
+      {
+        parent.setSelectedButton(this);
+        parent.showFolderContents(getNode());
+      }
+    }
+  }
+}

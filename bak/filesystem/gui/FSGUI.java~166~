@@ -1,0 +1,246 @@
+package filesystem.gui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import filesystem.core.CoreFS;
+import filesystem.core.Node;
+
+public class FSGUI
+    extends JFrame
+    implements ActionListener
+{
+  private JLabel headingLabel = new JLabel();
+  private JPanel mainPanel = new JPanel();
+  private JScrollPane leftScrollPane = new JScrollPane();
+
+  private JMenuItem assignFS = new JMenuItem("Create File System", 'F');
+  private JMenuItem createFS = new JMenuItem("Create Partition", 'C');
+  private CommonTasks cTasks = new CommonTasks();
+  private CoreFS cfs = new CoreFS();
+  private JScrollPane explorerPane = new JScrollPane();
+  private Explorer explorer;
+
+  public FSGUI()
+  {
+    super("JFile System");
+    explorer = new Explorer(this);
+    cTasks.setParentUI(this);
+    try
+    {
+      jbInit();
+    }
+    catch(Exception e)
+    {
+      e.printStackTrace();
+    }
+    JMenuBar mBar = new JMenuBar();
+    JMenu fileMenu = new JMenu("File");
+    assignFS.addActionListener(this);
+    createFS.addActionListener(this);
+    fileMenu.add(assignFS);
+    fileMenu.add(createFS);
+    mBar.add(fileMenu);
+    this.setJMenuBar(mBar);
+
+    this.setSize(800, 570);
+    this.setVisible(true);
+  }
+
+  public void actionPerformed(ActionEvent e)
+  {
+    if(e.getSource().equals(assignFS))
+    {
+      try
+      {
+        String len = JOptionPane.showInputDialog(this,
+                                                 "Enter File System size in MB");
+        long size = Long.parseLong(len);
+        //convert from MB to bytes
+        size = size * 1024 * 1024;
+        cfs.createFileSystem(size);
+        JOptionPane.showMessageDialog(this, "Space successfully allocated");
+        explorer.showRoots();
+      }
+      catch(NumberFormatException ex)
+      {
+        JOptionPane.showMessageDialog(this, "Enter valid number!");
+      }
+
+      catch(Exception ex)
+      {
+        JOptionPane.showMessageDialog(this, ex.getMessage());
+      }
+    }
+    if(e.getSource().equals(createFS))
+    {
+      PartitionWizard pw = new PartitionWizard(this, cfs, this);
+    }
+  }
+
+  /**return true if user has select root or folder for delete, copy
+   * rename, paste, create object
+   * <Br>NOTE: mycomputer, cut, delete does not have node object,
+   * so it will return null
+   **/
+  public boolean isValidLocation()
+  {
+    if(explorer.getSelectedButton() != null)
+    {
+      Node n = explorer.getSelectedButton().getNode();
+      if(n != null)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public void doRename()
+  {
+    if(explorer.getSelectedButton() != null)
+    {
+      Node rename = explorer.getSelectedButton().getNode();
+      if(rename != null)
+      {
+        String newName = JOptionPane.showInputDialog(this,
+            "Enter new Name for this node");
+
+        if(newName != null)
+        {
+          rename.setNodeName(newName);
+          boolean isRenamed = cfs.rename(rename);
+          if(!isRenamed)
+          {
+            JOptionPane.showMessageDialog(this,
+                                          "One or more errors occurred during the rename operation");
+          }
+          if(rename.isRoot())
+            explorer.showRoots();
+          else if(rename.getParentDirectory().isRoot())
+          {
+            explorer.showRootContents(rename.getPreviousNode());
+          }
+          else if(rename.getParentDirectory().isDirectory())
+            explorer.showFolderContents(rename.getParentDirectory());
+
+        }
+      }
+    }
+  }
+
+  /*
+     hide node from display
+   */
+  public void deleteNode()
+  {
+    Node n = explorer.getSelectedButton().getNode();
+
+    if(n != null && n.isDirectory() || n.isFile())
+    {
+      boolean b = cfs.deleteNode(n);
+      if(!b)
+      {
+        JOptionPane.showMessageDialog(this, "Unable to delete object");
+        //move in up direction until you find root or directory
+      }
+      else
+      {
+
+        Node top = n.getParentDirectory();
+        if(top != null)
+        {
+          System.out.println("Deleting: " + n.getNodeName() + "  & selecting: " +
+                             n.getNodeName());
+          if(top.isRoot())
+          {
+            explorer.showRootContents(top);
+          }
+          else
+          {
+            explorer.showFolderContents(top);
+          }
+        }
+        else
+        {
+          explorer.showRoots();
+        }
+      }
+    }
+  }
+
+  public Explorer getExplorer()
+  {
+    return explorer;
+  }
+
+  public CoreFS getCoreFS()
+  {
+    return cfs;
+  }
+
+  //desription of roots, files and folders
+  public void displayDescription(ButtonIcon n)
+  {
+    cTasks.displayDetails(n);
+  }
+
+  public void createFolder(String name)
+  {
+    try
+    {
+      if(explorer.getSelectedButton() != null &&
+         explorer.getSelectedButton().getNode() != null)
+      {
+        Node n = explorer.getSelectedButton().getNode();
+        if(n.isDirectory())
+        {
+          cfs.createDirectory(n.getParentNode(), n, name);
+          explorer.showFolderContents(n);
+        }
+        else if(n.isRoot())
+        {
+          cfs.createDirectory(n, name);
+          explorer.showRootContents(n);
+        }
+      }
+    }
+    catch(Exception e)
+    {
+      JOptionPane.showMessageDialog(this,
+                                    "Error occurred while creating a folder\n" +
+                                    e.getMessage());
+      System.out.println("Exception in creating Directory: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  public void clearDescription()
+  {
+    cTasks.clearDescription();
+  }
+
+  private void jbInit() throws Exception
+  {
+    headingLabel.setFont(new java.awt.Font("Arial", 1, 30));
+    headingLabel.setHorizontalAlignment(SwingConstants.CENTER);
+    headingLabel.setHorizontalTextPosition(SwingConstants.TRAILING);
+    headingLabel.setText("JFile System");
+    headingLabel.setBounds(new Rectangle(329, 16, 208, 29));
+    this.getContentPane().setBackground(Color.white);
+    this.setDefaultCloseOperation(EXIT_ON_CLOSE);
+    this.getContentPane().setLayout(null);
+    mainPanel.setBackground(Color.white);
+    mainPanel.setBounds(new Rectangle(1, 45, 795, 480));
+    mainPanel.setLayout(null);
+    leftScrollPane.getViewport().setBackground(Color.white);
+    leftScrollPane.setBounds(new Rectangle(0, 2, 193, 469));
+    explorerPane.setBounds(new Rectangle(194, 1, 595, 469));
+    leftScrollPane.getViewport().add(cTasks);
+    this.getContentPane().add(headingLabel, null);
+    this.getContentPane().add(mainPanel, null);
+    mainPanel.add(leftScrollPane, null);
+    mainPanel.add(explorerPane, null);
+    explorerPane.getViewport().add(explorer, null);
+  }
+}

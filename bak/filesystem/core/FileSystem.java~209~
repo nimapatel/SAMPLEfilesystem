@@ -1,0 +1,263 @@
+package filesystem.core;
+
+import java.io.*;
+import java.util.Vector;
+
+public class FileSystem
+{
+  protected static final String FILE_SYSTEM_PATH = "c:\\filesystem.fs";
+  private RandomAccessFile raf;
+
+  public static String ERROR = "";
+
+  public FileSystem()
+  {
+  }
+
+  protected RandomAccessFile OpenFile() throws Exception
+  {
+    if(raf != null)
+    {
+      throw new Exception("File is already Opened");
+    }
+    else
+    {
+      raf = new RandomAccessFile(FILE_SYSTEM_PATH, "rw");
+      return raf;
+    }
+  }
+
+  public void closeFile() throws Exception
+  {
+    raf.close();
+    raf = null;
+  }
+
+
+  protected void writeRootNode(Node n, long offset) throws Exception
+  {
+    raf.seek(offset);
+    raf.write(n.getNodeNamebytes());
+    raf.writeByte(n.getNodeType());
+    raf.writeLong(n.getOffset());
+    raf.writeLong(n.getNodeLink());
+    raf.writeLong(n.getSizeOnDisk());
+    raf.writeLong(n.getFreeSpace());
+    raf.writeLong(n.getLastNodeWritten());
+  }
+
+  protected Node readRootNode(long offset) throws Exception
+  {
+    raf.seek(offset);
+    Node rootNode = new Node();
+    raf.read(rootNode.nodeName);
+    rootNode.setNodeType(raf.readByte());
+    rootNode.setOffset(raf.readLong());
+    rootNode.setNodeLink(raf.readLong());
+    rootNode.setSizeOnDisk(raf.readLong());
+    rootNode.setFreeSpace(raf.readLong());
+    rootNode.setLastNodeWritten(raf.readLong());
+    return rootNode;
+  }
+
+  protected Object[] readRoots() throws Exception
+  {
+    Vector v = new Vector();
+    Node n = new Node();
+    n = readRootNode(0);
+    while(n.getNodeLink() != 0)
+    {
+      v.add(n);
+      n = readRootNode(n.getNodeLink());
+    }
+    if(n.getNodeName() != null || n.getNodeName().length() != 0)
+      v.add(n);
+    return v.toArray();
+  }
+
+  protected void writeDirectory(Node dNode, long offset)throws Exception
+  {
+    raf.seek(offset);
+    raf.write(dNode.getNodeNamebytes());
+    raf.writeByte(dNode.getNodeType());
+    raf.writeLong(dNode.getOffset());
+    raf.writeLong(dNode.getNodeLink());
+    raf.writeByte(dNode.getStatus());
+    raf.writeLong(dNode.getChildNode());
+  }
+  protected byte getNodeType(long offset)throws Exception
+  {
+
+    raf.seek(offset);
+    raf.skipBytes(Node.MAX_NODE_LENGTH);
+    byte b = raf.readByte();
+
+    return b;
+  }
+  protected Node readNode(long offset) throws Exception
+  {
+
+    Node n = new Node();
+    if (getNodeType(offset)==Kernel.DIRECTORY)
+    {
+      n = readDirectory(offset);
+    }
+    else if(getNodeType(offset)==Kernel.FILE)
+    {
+      //read file code goes here
+    }
+
+    return n;
+  }
+  //return true if there is no file or directory exists in the root
+  protected boolean isRootEmpty(Node root) throws Exception
+  {
+      raf.seek(root.getOffset()+Kernel.ROOT_SIZE+1);
+      raf.skipBytes(Node.MAX_NODE_LENGTH);
+      byte b = raf.readByte();
+      if(b > 0)
+        return false;
+      else
+        return true;
+  }
+  protected boolean isFileSystemEmpty()
+  {
+    try
+    {
+      OpenFile();
+      raf.seek(0);
+      raf.skipBytes(Node.MAX_NODE_LENGTH);
+      byte b = raf.readByte();
+      closeFile();
+      if(b <= 0)
+        return true;
+    }
+    catch(Exception ex){
+      try{closeFile();}catch(Exception e){return true;} return true;}
+    return false;
+  }
+  protected Object[] readRoot(Node root)throws Exception
+  {
+    if(!isRootEmpty(root))
+    {
+      Vector v = new Vector();
+      long offset = root.getOffset() + Kernel.ROOT_SIZE + 1;
+      Node tmp = readNode(offset);
+      //set the parent node of this node
+      tmp.setParentNode(root);
+      tmp.setPreviousNode(root);
+      tmp.setParentDirectory(root);
+      //if(tmp.getStatus()!= Kernel.IS_DELETED)
+        v.add(tmp);
+      while(tmp.getNodeLink() >0)
+      {
+        //OpenFile();
+        Node previousNode = tmp;
+        tmp = readNode(tmp.getNodeLink());
+        tmp.setPreviousNode(previousNode);
+        tmp.setParentNode(root);
+        tmp.setParentDirectory(root);
+        //if(tmp.getStatus()!= Kernel.IS_DELETED)
+          v.add(tmp);
+        //closeFile();
+      }
+      return v.toArray();
+    }
+    else
+      return null;
+  }
+  protected Node readDirectory(long offset) throws Exception
+  {
+    raf.seek(offset);
+    Node tmp = new Node();
+    raf.read(tmp.nodeName);
+    tmp.setNodeType(raf.readByte());
+    tmp.setOffset(raf.readLong());
+    tmp.setNodeLink(raf.readLong());
+    tmp.setStatus(raf.readByte());
+    tmp.setChildNode(raf.readLong());
+    return tmp;
+  }
+  protected boolean deleteNode(Node n)
+  {
+    try
+    {
+      n.setStatus(Kernel.IS_DELETED);
+      this.writeDirectory(n,n.getOffset());
+
+      //Node previousNode = n.getPreviousNode();
+      //make connection b
+      //previousNode.setNodeLink(n.getNodeLink());
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Unable to delete file: " + ex.getMessage());
+      ex.printStackTrace();
+      return false;
+    }
+    return true;
+  }
+  //return the last node in the root
+  protected Node getLastRootNode(Node root)
+  {
+    try
+    {
+      long offset = root.getOffset() + Kernel.ROOT_SIZE + 1;
+      Node n = this.readNode(offset);
+      if(n.getOffset() == 0)
+        return null;
+      while(n.getNodeLink() >0)
+        n = this.readNode(n.getNodeLink());
+      return n;
+    }
+    catch(Exception ex)
+    {
+      System.out.println("Unable to get last root directory"+ex.getMessage());
+      return null;
+    }
+  }
+  //write the file
+  protected void writeFile(Node aFile)throws Exception
+  {
+    try
+    {
+      System.out.println("writing file at: " + aFile.getOffset());
+      raf.seek(aFile.getOffset());
+      raf.write(aFile.getNodeNamebytes());
+      raf.writeByte(aFile.getNodeType());
+      raf.writeByte(aFile.getStatus());
+      raf.writeByte(aFile.getFileAttributes());
+      raf.writeLong(aFile.getOffset());
+      raf.writeLong(aFile.getNodeLink());
+      raf.writeLong(aFile.getSizeOnDisk());
+      raf.writeLong(aFile.getLastModified());
+    }
+    catch(Exception ex)
+    {
+      throw new Exception(ex.getMessage(),ex);
+    }
+  }
+  public void writeFileContents( byte b)throws Exception
+  {
+    try
+    {
+      raf.write(b);
+    }catch(Exception ex)
+    {
+      throw new Exception ("Unable to write file contents: ",ex);
+    }
+  }
+  protected Node readFile(long offset) throws Exception
+  {
+    raf.seek(offset);
+    Node tmp = new Node();
+    raf.read(tmp.nodeName);
+    tmp.setNodeType(raf.readByte());
+    tmp.setOffset(raf.readLong());
+    tmp.setNodeLink(raf.readLong());
+    tmp.setStatus(raf.readByte());
+    tmp.setChildNode(raf.readLong());
+    return tmp;
+  }
+
+}

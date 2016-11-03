@@ -1,0 +1,11 @@
+package filesystem.gui;
+
+import javax.swing.*;
+
+public class CommanTasks extends JPanel
+{
+  public CommanTasks()
+  {
+  }
+
+}

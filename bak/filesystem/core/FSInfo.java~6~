@@ -1,0 +1,27 @@
+package filesystem.core;
+
+public class FSInfo implements java.io.Serializable
+{
+  private long size;
+  private Partition partitions[];
+
+  public FSInfo()
+  {
+  }
+  public void setFileSystemSize(long size)
+  {
+    this.size = size;
+  }
+  public long getFileSystemSize()
+  {
+    return size;
+  }
+  public void setParitions(Partition p[])
+  {
+    this.partitions = p;
+  }
+  public Partition[] getPartitions()
+  {
+    return this.partitions;
+  }
+}

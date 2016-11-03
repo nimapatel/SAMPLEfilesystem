@@ -1,0 +1,11 @@
+package filesystem.core;
+
+public class Partition
+{
+  private String partitionName;
+  private int size;
+
+  public Partition()
+  {
+  }
+}
