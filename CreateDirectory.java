@@ -13,7 +13,7 @@ public class CreateDirectory {
 		  		File files = new File(Folder=s.next());
 		  	
 	        if (!files.exists()) {
-	            if (files.mkdir()) {
+	            if (files.mkdirs()) {
 	                System.out.println("Directory is created!");
 	            } else {
 	                System.out.println("Directory already exists!");
