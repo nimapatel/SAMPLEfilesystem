@@ -18,7 +18,7 @@ public class CreateFile {
 		  	String FileName = "";
 		  	File f2 = new File(FileName=c.nextLine());
 		  	
-		  	f1.mkdir();
+		  	f1.mkdirs();
 		  	f2.createNewFile();
 		  	System.out.println("File was created");
 		
@@ -29,7 +29,7 @@ public class CreateFile {
 
         //loop needs to be added to do this as many times as user wants and to create subfolders
        
-        
+        //You can create a file in multiple subfolders at once.
        
         //after user ends the loop the user must pick if they are going to exit program or go back to main menu
 		
