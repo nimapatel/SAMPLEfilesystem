@@ -22,7 +22,7 @@ public class CreateDirectory {
 
 	        //loop needs to be added to do this as many times as user wants
 	       
-	        
+	        //You are able to create subfolders by doing C:\\Root\\Folder1Name\\Subfolder\\
 	       
 	        //after user ends the loop the user must pick if they are going to exit program or go back to main menu
 
